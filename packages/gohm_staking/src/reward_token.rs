@@ -56,3 +56,6 @@ fn is_valid_symbol(symbol: &str) -> bool {
     }
     true
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct MigrateMsg {}

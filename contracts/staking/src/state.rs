@@ -14,6 +14,7 @@ pub struct Config {
     pub reward_token: CanonicalAddr,
     pub staking_token: CanonicalAddr,
     pub distribution_schedule: Vec<(u64, u64, Uint128)>,
+    pub governance: CanonicalAddr,
 }
 
 pub fn store_config(storage: &mut dyn Storage, config: &Config) -> StdResult<()> {

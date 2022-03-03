@@ -11,12 +11,9 @@ use gohm_staking::staking::{
     StakerInfoResponse, StateResponse,
 };
 
-use crate::{
-    querier::query_anc_minter,
-    state::{
-        read_config, read_staker_info, read_state, remove_staker_info, store_config,
-        store_staker_info, store_state, Config, StakerInfo, State,
-    },
+use crate::state::{
+    read_config, read_staker_info, read_state, remove_staker_info, store_config, store_staker_info,
+    store_state, Config, StakerInfo, State,
 };
 
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -35,6 +32,7 @@ pub fn instantiate(
             reward_token: deps.api.addr_canonicalize(&msg.reward_token)?,
             staking_token: deps.api.addr_canonicalize(&msg.staking_token)?,
             distribution_schedule: msg.distribution_schedule,
+            governance: deps.api.addr_canonicalize(&msg.governance)?,
         },
     )?;
 
@@ -60,8 +58,9 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             new_staking_contract,
         } => migrate_staking(deps, env, info, new_staking_contract),
         ExecuteMsg::UpdateConfig {
+            governance,
             distribution_schedule,
-        } => update_config(deps, env, info, distribution_schedule),
+        } => update_config(deps, env, info, governance, distribution_schedule),
     }
 }
 
@@ -203,29 +202,28 @@ pub fn update_config(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    distribution_schedule: Vec<(u64, u64, Uint128)>,
+    governance: Option<String>,
+    distribution_schedule: Option<Vec<(u64, u64, Uint128)>>,
 ) -> StdResult<Response> {
-    // get gov address by querying anc token minter
-    let config: Config = read_config(deps.storage)?;
-    let state: State = read_state(deps.storage)?;
+    let mut config: Config = read_config(deps.storage)?;
 
     let sender_addr_raw: CanonicalAddr = deps.api.addr_canonicalize(info.sender.as_str())?;
-    let anc_token: Addr = deps.api.addr_humanize(&config.reward_token)?;
-    let gov_addr_raw: CanonicalAddr = deps
-        .api
-        .addr_canonicalize(&query_anc_minter(&deps.querier, anc_token)?)?;
-    if sender_addr_raw != gov_addr_raw {
+    if config.governance != sender_addr_raw {
         return Err(StdError::generic_err("unauthorized"));
     }
 
-    assert_new_schedules(&config, &state, distribution_schedule.clone())?;
+    if let Some(distribution_schedule) = distribution_schedule {
+        let state: State = read_state(deps.storage)?;
 
-    let new_config = Config {
-        reward_token: config.reward_token,
-        staking_token: config.staking_token,
-        distribution_schedule,
-    };
-    store_config(deps.storage, &new_config)?;
+        assert_new_schedules(&config, &state, distribution_schedule.clone())?;
+
+        config.distribution_schedule = distribution_schedule;
+    }
+    if let Some(governance) = governance {
+        config.governance = deps.api.addr_canonicalize(&governance)?;
+    }
+
+    store_config(deps.storage, &config)?;
 
     Ok(Response::new().add_attributes(vec![("action", "update_config")]))
 }
@@ -238,16 +236,12 @@ pub fn migrate_staking(
 ) -> StdResult<Response> {
     let sender_addr_raw: CanonicalAddr = deps.api.addr_canonicalize(info.sender.as_str())?;
     let mut config: Config = read_config(deps.storage)?;
-    let mut state: State = read_state(deps.storage)?;
-    let anc_token: Addr = deps.api.addr_humanize(&config.reward_token)?;
 
-    // get gov address by querying anc token minter
-    let gov_addr_raw: CanonicalAddr = deps
-        .api
-        .addr_canonicalize(&query_anc_minter(&deps.querier, anc_token.clone())?)?;
-    if sender_addr_raw != gov_addr_raw {
+    if sender_addr_raw != config.governance {
         return Err(StdError::generic_err("unauthorized"));
     }
+
+    let mut state: State = read_state(deps.storage)?;
 
     // compute global reward, sets last_distributed_seconds to env.block.time.seconds
     compute_reward(&config, &mut state, env.block.time.seconds());
@@ -289,9 +283,11 @@ pub fn migrate_staking(
 
     let remaining_anc = total_distribution_amount.checked_sub(distributed_amount)?;
 
+    let reward_token: Addr = deps.api.addr_humanize(&config.reward_token)?;
+
     Ok(Response::new()
         .add_messages(vec![CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: anc_token.to_string(),
+            contract_addr: reward_token.to_string(),
             msg: to_binary(&Cw20ExecuteMsg::Transfer {
                 recipient: new_staking_contract,
                 amount: remaining_anc,
@@ -374,6 +370,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         reward_token: deps.api.addr_humanize(&state.reward_token)?.to_string(),
         staking_token: deps.api.addr_humanize(&state.staking_token)?.to_string(),
         distribution_schedule: state.distribution_schedule,
+        governance: deps.api.addr_humanize(&state.governance)?.to_string(),
     };
 
     Ok(resp)

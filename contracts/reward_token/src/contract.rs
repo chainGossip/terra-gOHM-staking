@@ -15,7 +15,7 @@ use cw20_legacy::{
 };
 use terraswap::asset::{Asset, AssetInfo};
 
-use gohm_staking::reward_token::InstantiateMsg;
+use gohm_staking::reward_token::{InstantiateMsg, MigrateMsg};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw20-base";
@@ -168,4 +168,9 @@ fn try_burn(
         }
         Err(err) => return Err(err),
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+    Ok(Response::default())
 }

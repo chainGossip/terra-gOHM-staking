@@ -9,6 +9,7 @@ pub struct InstantiateMsg {
     pub reward_token: String,
     pub staking_token: String,
     pub distribution_schedule: Vec<(u64, u64, Uint128)>,
+    pub governance: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -26,7 +27,8 @@ pub enum ExecuteMsg {
         new_staking_contract: String,
     },
     UpdateConfig {
-        distribution_schedule: Vec<(u64, u64, Uint128)>,
+        governance: Option<String>,
+        distribution_schedule: Option<Vec<(u64, u64, Uint128)>>,
     },
 }
 
@@ -60,6 +62,7 @@ pub struct ConfigResponse {
     pub reward_token: String,
     pub staking_token: String,
     pub distribution_schedule: Vec<(u64, u64, Uint128)>,
+    pub governance: String,
 }
 
 // We define a custom struct for each query response

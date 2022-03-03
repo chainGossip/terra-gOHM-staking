@@ -1,6 +1,5 @@
 use crate::contract::{execute, instantiate, query};
-use crate::mock_querier::mock_dependencies;
-use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{
     attr, from_binary, to_binary, CosmosMsg, Decimal, StdError, SubMsg, Uint128, WasmMsg,
 };
@@ -19,6 +18,7 @@ fn proper_initialization() {
         reward_token: "reward0000".to_string(),
         staking_token: "staking0000".to_string(),
         distribution_schedule: vec![(100, 200, Uint128::from(1000000u128))],
+        governance: "gov0000".to_string(),
     };
 
     let info = mock_info("addr0000", &[]);
@@ -35,6 +35,7 @@ fn proper_initialization() {
             reward_token: "reward0000".to_string(),
             staking_token: "staking0000".to_string(),
             distribution_schedule: vec![(100, 200, Uint128::from(1000000u128))],
+            governance: "gov0000".to_string(),
         }
     );
 
@@ -74,6 +75,7 @@ fn test_bond_tokens() {
                 Uint128::from(10000000u128),
             ),
         ],
+        governance: "gov0000".to_string(),
     };
 
     let info = mock_info("addr0000", &[]);
@@ -201,6 +203,7 @@ fn test_unbond() {
             (12345, 12345 + 100, Uint128::from(1000000u128)),
             (12345 + 100, 12345 + 200, Uint128::from(10000000u128)),
         ],
+        governance: "gov0000".to_string(),
     };
 
     let info = mock_info("addr0000", &[]);
@@ -269,6 +272,7 @@ fn test_compute_reward() {
                 Uint128::from(10000000u128),
             ),
         ],
+        governance: "gov0000".to_string(),
     };
 
     let info = mock_info("addr0000", &[]);
@@ -390,6 +394,7 @@ fn test_withdraw() {
                 Uint128::from(10000000u128),
             ),
         ],
+        governance: "gov0000".to_string(),
     };
 
     let info = mock_info("addr0000", &[]);
@@ -447,6 +452,7 @@ fn test_migrate_staking() {
                 Uint128::from(10000000u128),
             ),
         ],
+        governance: "gov0000".to_string(),
     };
 
     let info = mock_info("addr0000", &[]);
@@ -485,8 +491,6 @@ fn test_migrate_staking() {
 
     // execute migration after 50 seconds
     env.block.time = env.block.time.plus_seconds(50);
-
-    deps.querier.with_minter("gov0000".to_string());
 
     let msg = ExecuteMsg::MigrateStaking {
         new_staking_contract: "newstaking0000".to_string(),
@@ -545,7 +549,8 @@ fn test_migrate_staking() {
                     mock_env().block.time.seconds() + 150,
                     Uint128::from(5000000u128)
                 ), // slot was modified
-            ]
+            ],
+            governance: "gov0000".to_string(),
         }
     );
 }
@@ -584,20 +589,20 @@ fn test_update_config() {
                 Uint128::from(10000000u128),
             ),
         ],
+        governance: "gov0000".to_string(),
     };
 
     let info = mock_info("addr0000", &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let update_config = UpdateConfig {
-        distribution_schedule: vec![(
+        governance: None,
+        distribution_schedule: Some(vec![(
             mock_env().block.time.seconds() + 300,
             mock_env().block.time.seconds() + 400,
             Uint128::from(10000000u128),
-        )],
+        )]),
     };
-
-    deps.querier.with_minter("gov0000".to_string());
 
     let info = mock_info("notgov", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, update_config);
@@ -638,7 +643,7 @@ fn test_update_config() {
     );
 
     let update_config = UpdateConfig {
-        distribution_schedule: vec![
+        distribution_schedule: Some(vec![
             (
                 mock_env().block.time.seconds(),
                 mock_env().block.time.seconds() + 100,
@@ -664,10 +669,9 @@ fn test_update_config() {
                 mock_env().block.time.seconds() + 500,
                 Uint128::from(10000000u128),
             ),
-        ],
+        ]),
+        governance: None,
     };
-
-    deps.querier.with_minter("gov0000".to_string());
 
     let info = mock_info("gov0000", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, update_config);
@@ -699,7 +703,7 @@ fn test_update_config() {
 
     //cannot update previous scehdule
     let update_config = UpdateConfig {
-        distribution_schedule: vec![
+        distribution_schedule: Some(vec![
             (
                 mock_env().block.time.seconds(),
                 mock_env().block.time.seconds() + 100,
@@ -725,10 +729,9 @@ fn test_update_config() {
                 mock_env().block.time.seconds() + 500,
                 Uint128::from(10000000u128),
             ),
-        ],
+        ]),
+        governance: None,
     };
-
-    deps.querier.with_minter("gov0000".to_string());
 
     let info = mock_info("gov0000", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, update_config);
@@ -741,7 +744,7 @@ fn test_update_config() {
 
     //successful one
     let update_config = UpdateConfig {
-        distribution_schedule: vec![
+        distribution_schedule: Some(vec![
             (
                 mock_env().block.time.seconds(),
                 mock_env().block.time.seconds() + 100,
@@ -767,10 +770,9 @@ fn test_update_config() {
                 mock_env().block.time.seconds() + 500,
                 Uint128::from(10000000u128),
             ),
-        ],
+        ]),
+        governance: None,
     };
-
-    deps.querier.with_minter("gov0000".to_string());
 
     let info = mock_info("gov0000", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, update_config).unwrap();
@@ -813,7 +815,7 @@ fn test_update_config() {
 
     //successful one
     let update_config = UpdateConfig {
-        distribution_schedule: vec![
+        distribution_schedule: Some(vec![
             (
                 mock_env().block.time.seconds(),
                 mock_env().block.time.seconds() + 100,
@@ -839,10 +841,9 @@ fn test_update_config() {
                 mock_env().block.time.seconds() + 500,
                 Uint128::from(50000000u128),
             ),
-        ],
+        ]),
+        governance: None,
     };
-
-    deps.querier.with_minter("gov0000".to_string());
 
     let info = mock_info("gov0000", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, update_config).unwrap();
@@ -884,7 +885,7 @@ fn test_update_config() {
     );
 
     let update_config = UpdateConfig {
-        distribution_schedule: vec![
+        distribution_schedule: Some(vec![
             (
                 mock_env().block.time.seconds(),
                 mock_env().block.time.seconds() + 100,
@@ -910,10 +911,9 @@ fn test_update_config() {
                 mock_env().block.time.seconds() + 500,
                 Uint128::from(80000000u128),
             ),
-        ],
+        ]),
+        governance: None,
     };
-
-    deps.querier.with_minter("gov0000".to_string());
 
     let info = mock_info("gov0000", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, update_config).unwrap();
@@ -955,7 +955,7 @@ fn test_update_config() {
     );
 
     let update_config = UpdateConfig {
-        distribution_schedule: vec![
+        distribution_schedule: Some(vec![
             (
                 mock_env().block.time.seconds(),
                 mock_env().block.time.seconds() + 100,
@@ -986,10 +986,9 @@ fn test_update_config() {
                 mock_env().block.time.seconds() + 600,
                 Uint128::from(60000000u128),
             ),
-        ],
+        ]),
+        governance: Some("gov0001".to_string()),
     };
-
-    deps.querier.with_minter("gov0000".to_string());
 
     let info = mock_info("gov0000", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, update_config).unwrap();
@@ -1034,4 +1033,5 @@ fn test_update_config() {
             )
         ]
     );
+    assert_eq!(config.governance, "gov0001".to_string());
 }
