@@ -129,6 +129,23 @@ fn test_bond_tokens() {
         }
     );
 
+    assert_eq!(
+        from_binary::<StateResponse>(
+            &query(
+                deps.as_ref(),
+                mock_env(),
+                QueryMsg::State { block_time: Some(mock_env().block.time.seconds() + 100) }
+            )
+            .unwrap()
+        )
+        .unwrap(),
+        StateResponse {
+            total_bond_amount: Uint128::from(100u128),
+            global_reward_index: Decimal::from_ratio(1000000u128, 1u128),
+            last_distributed: mock_env().block.time.seconds() + 100,
+        }
+    );
+
     // bond 100 more tokens
     let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
         sender: "addr0000".to_string(),

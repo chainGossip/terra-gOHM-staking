@@ -1,17 +1,17 @@
 # Based on https://github.com/actions-rs/example/blob/master/.github/workflows/quickstart.yml
 
 on: [push, pull_request]
-
-name: Basic
-
+name: CI
 jobs:
-  test:
-    name: Test Suite
+  unit-tests:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-
+      - if: ${{ env.ACT }}
+        name: Hack container for local development
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_12.x | sudo -E bash -
+          sudo apt-get install -y nodejs
+      - uses: actions/checkout@v1
       - name: ⚡ Cache
         if: ${{ !env.ACT }}
         uses: actions/cache@v2
@@ -21,28 +21,19 @@ jobs:
             target
             !target/debug/deps
           key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml') }}
-
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+      - uses: actions-rs/toolchain@v1
         with:
-          # profile: minimal
           toolchain: nightly
-          # toolchain: 1.58.1
-          # target: wasm32-unknown-unknown
           override: true
-
-      - uses: actions/checkout@v1
-      - name: Run unit tests
-        uses: actions-rs/cargo@v1
+      - uses: actions-rs/cargo@v1
+        name: Run tests
         with:
           command: test
           args: --all-features --no-fail-fast
         env:
-          # RUST_BACKTRACE: 1
           CARGO_INCREMENTAL: "0"
           RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests"
           RUSTDOCFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests"
-
       - uses: actions-rs/grcov@v0.1
         name: Generate coverage report
       - name: Installing htmlq - to parse coverage report
