@@ -27,8 +27,10 @@ jobs:
           args: --all
         env:
           RUST_BACKTRACE: 1
-      - uses: actions-rs/grcov@v0.1
-        name: Generate coverage report
+
+      - name: Generate coverage report
+        uses: actions-rs/grcov@v0.1
+
       - name: Installing htmlq - to parse coverage report
         run: cargo install htmlq
       - name: Parse coverage report and print
