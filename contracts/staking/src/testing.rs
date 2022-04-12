@@ -134,14 +134,16 @@ fn test_bond_tokens() {
             &query(
                 deps.as_ref(),
                 mock_env(),
-                QueryMsg::State { block_time: Some(mock_env().block.time.seconds() + 100) }
+                QueryMsg::State { 
+                    block_time: Some(mock_env().block.time.seconds() + 100) 
+                }
             )
             .unwrap()
         )
         .unwrap(),
         StateResponse {
             total_bond_amount: Uint128::from(100u128),
-            global_reward_index: Decimal::from_ratio(1000000u128, 1u128),
+            global_reward_index: Decimal::from_ratio(10000u128, 1u128),
             last_distributed: mock_env().block.time.seconds() + 100,
         }
     );
