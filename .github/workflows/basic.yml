@@ -16,8 +16,8 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
-          # toolchain: 1.58.1
+          # toolchain: nightly
+          toolchain: 1.58.1
           target: wasm32-unknown-unknown
           override: true
 
@@ -27,14 +27,13 @@ jobs:
           command: test
           args: --all
         env:
-          # RUST_BACKTRACE: 1
+          RUST_BACKTRACE: 1
           CARGO_INCREMENTAL: "0"
           RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests"
           RUSTDOCFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests"
 
-      - name: Generate coverage report
-        uses: actions-rs/grcov@v0.1
-
+      - uses: actions-rs/grcov@v0.1
+        name: Generate coverage report
       - name: Installing htmlq - to parse coverage report
         run: cargo install htmlq
       - name: Parse coverage report and print
