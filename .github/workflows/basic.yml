@@ -12,15 +12,15 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
-      - name: ⚡ Cache
-        if: ${{ !env.ACT }}
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo
-            target
-            !target/debug/deps
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml') }}
+      # - name: ⚡ Cache
+      #   if: ${{ !env.ACT }}
+      #   uses: actions/cache@v2
+      #   with:
+      #     path: |
+      #       ~/.cargo
+      #       target
+      #       !target/debug/deps
+      #     key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml') }}
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
