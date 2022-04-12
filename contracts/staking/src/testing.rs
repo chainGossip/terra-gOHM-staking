@@ -279,7 +279,7 @@ fn test_bond_tokens_fails_if_no_message() {
 }
 
 #[test]
-fn test_unbond() {
+fn test_unbond_completely() {
     let mut deps = mock_dependencies(&[]);
 
     let msg = InstantiateMsg {
@@ -337,6 +337,47 @@ fn test_unbond() {
             funds: vec![],
         }))]
     );
+}
+
+#[test]
+fn test_unbond_normal() {
+    let mut deps = mock_dependencies(&[]);
+
+    let msg = InstantiateMsg {
+        reward_token: "reward0000".to_string(),
+        staking_token: "staking0000".to_string(),
+        distribution_schedule: vec![
+            (12345, 12345 + 100, Uint128::from(1000000u128)),
+            (12345 + 100, 12345 + 200, Uint128::from(10000000u128)),
+        ],
+        governance: "gov0000".to_string(),
+    };
+
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    // bond 100 tokens
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "addr0000".to_string(),
+        amount: Uint128::from(100u128),
+        msg: to_binary(&Cw20HookMsg::Bond {}).unwrap(),
+    });
+    let info = mock_info("staking0000", &[]);
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    // unbond 150 tokens; failed
+    let msg = ExecuteMsg::Unbond {
+        amount: Uint128::from(150u128),
+    };
+
+    let info = mock_info("addr0000", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    match res {
+        StdError::GenericErr { msg, .. } => {
+            assert_eq!(msg, "Cannot unbond more than bond amount");
+        }
+        _ => panic!("Must return generic error"),
+    };
 
     // normal unbond less than bonded amount
     let msg = ExecuteMsg::Unbond {
@@ -640,7 +681,8 @@ fn test_withdraw_after_unbond() {
             msg: to_binary(&Cw20ExecuteMsg::Transfer {
                 recipient: "addr0000".to_string(),
                 amount: Uint128::from(100u128),
-            }).unwrap(),
+            })
+            .unwrap(),
             funds: vec![],
         }))]
     );
@@ -660,7 +702,8 @@ fn test_withdraw_after_unbond() {
             contract_addr: "reward0000".to_string(),
             msg: to_binary(&Cw20ExecuteMsg::Transfer {
                 recipient: "addr0000".to_string(),
-                amount: Uint128::from(1000000u128),
+                amount: Uint128::zero(),
+                // amount: Uint128::from(1000000u128),
             })
             .unwrap(),
             funds: vec![],
