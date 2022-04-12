@@ -135,7 +135,7 @@ fn test_bond_tokens() {
                 deps.as_ref(),
                 mock_env(),
                 QueryMsg::State { 
-                    block_time: Some(mock_env().block.time.seconds() + 100) 
+                    block_time: Some(mock_env().block.time.seconds() + 100)
                 }
             )
             .unwrap()
