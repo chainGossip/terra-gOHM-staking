@@ -21,6 +21,7 @@ jobs:
           target: wasm32-unknown-unknown
           override: true
 
+      - uses: actions/checkout@v1
       - name: Run unit tests
         uses: actions-rs/cargo@v1
         with:
