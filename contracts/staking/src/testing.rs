@@ -318,7 +318,7 @@ fn test_unbond() {
         _ => panic!("Must return generic error"),
     };
 
-    // normal unbond
+    // normal unbond completely
     let msg = ExecuteMsg::Unbond {
         amount: Uint128::from(100u128),
     };
@@ -332,6 +332,26 @@ fn test_unbond() {
             msg: to_binary(&Cw20ExecuteMsg::Transfer {
                 recipient: "addr0000".to_string(),
                 amount: Uint128::from(100u128),
+            })
+            .unwrap(),
+            funds: vec![],
+        }))]
+    );
+
+    // normal unbond less than bonded amount
+    let msg = ExecuteMsg::Unbond {
+        amount: Uint128::from(50u128),
+    };
+
+    let info = mock_info("addr0000", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(
+        res.messages,
+        vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "staking0000".to_string(),
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: "addr0000".to_string(),
+                amount: Uint128::from(50u128),
             })
             .unwrap(),
             funds: vec![],
@@ -514,7 +534,7 @@ fn test_compute_reward() {
 }
 
 #[test]
-fn test_withdraw() {
+fn test_withdraw_without_unbond() {
     let mut deps = mock_dependencies(&[]);
 
     let msg = InstantiateMsg {
@@ -547,6 +567,83 @@ fn test_withdraw() {
     let info = mock_info("staking0000", &[]);
     let mut env = mock_env();
     let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    // 100 seconds passed
+    // 1,000,000 rewards distributed
+    env.block.time = env.block.time.plus_seconds(100);
+
+    let info = mock_info("addr0000", &[]);
+
+    let msg = ExecuteMsg::Withdraw {};
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+
+    assert_eq!(
+        res.messages,
+        vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "reward0000".to_string(),
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: "addr0000".to_string(),
+                amount: Uint128::from(1000000u128),
+            })
+            .unwrap(),
+            funds: vec![],
+        }))]
+    );
+}
+
+#[test]
+fn test_withdraw_after_unbond() {
+    let mut deps = mock_dependencies(&[]);
+
+    let msg = InstantiateMsg {
+        reward_token: "reward0000".to_string(),
+        staking_token: "staking0000".to_string(),
+        distribution_schedule: vec![
+            (
+                mock_env().block.time.seconds(),
+                mock_env().block.time.seconds() + 100,
+                Uint128::from(1000000u128),
+            ),
+            (
+                mock_env().block.time.seconds() + 100,
+                mock_env().block.time.seconds() + 200,
+                Uint128::from(10000000u128),
+            ),
+        ],
+        governance: "gov0000".to_string(),
+    };
+
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    // bond 100 tokens
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "addr0000".to_string(),
+        amount: Uint128::from(100u128),
+        msg: to_binary(&Cw20HookMsg::Bond {}).unwrap(),
+    });
+    let info = mock_info("staking0000", &[]);
+    let mut env = mock_env();
+    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    // unbond 100 tokens
+    let msg = ExecuteMsg::Unbond {
+        amount: Uint128::from(100u128),
+    };
+
+    let info = mock_info("addr0000", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(
+        res.messages,
+        vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "staking0000".to_string(),
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: "addr0000".to_string(),
+                amount: Uint128::from(100u128),
+            }).unwrap(),
+            funds: vec![],
+        }))]
+    );
 
     // 100 seconds passed
     // 1,000,000 rewards distributed
