@@ -1,14 +1,29 @@
-use crate::contract::{execute, instantiate, query};
+// use crate::contract::{execute, instantiate, migrate, query};
+// use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+// use cosmwasm_std::{
+//     attr, from_binary, to_binary, CosmosMsg, Decimal, StdError, SubMsg, Uint128, WasmMsg, Response
+// };
+// use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+// use gohm_staking::staking::ExecuteMsg::UpdateConfig;
+// use gohm_staking::staking::{
+//     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StakerInfoResponse, MigrateMsg
+//     StateResponse,
+// };
+
+use crate::contract::{execute, instantiate, migrate, query};
+
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{
-    attr, from_binary, to_binary, CosmosMsg, Decimal, StdError, SubMsg, Uint128, WasmMsg,
+    attr, from_binary, to_binary, CosmosMsg, Decimal, Response, StdError,
+    SubMsg, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use gohm_staking::staking::ExecuteMsg::UpdateConfig;
 use gohm_staking::staking::{
-    ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StakerInfoResponse,
-    StateResponse,
+    ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    StakerInfoResponse, StateResponse,
 };
+use std::error::Error;
 
 #[test]
 fn proper_initialization() {
@@ -1331,4 +1346,11 @@ fn test_update_config() {
         ]
     );
     assert_eq!(config.governance, "gov0001".to_string());
+}
+
+#[test]
+fn test_migrate() {
+    let mut deps = mock_dependencies(&[]);
+    let res = migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+    assert_eq!(res, Response::default())
 }
